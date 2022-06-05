@@ -1,36 +1,44 @@
 function visualizeAudio(url) {
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  const audioContext = new AudioContext();
   fetch(url)
   .then(response => response.arrayBuffer())
   .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
   .then(audioBuffer => visualize(audioBuffer));
 }
 
+function visualizeAudio2(file) {
+  visualizeAudio(URL.createObjectURL(file));
+}
+
 function filterData(audioBuffer) {
   const rawData = audioBuffer.getChannelData(0);
-  const samples = Math.floor(1000 * audioBuffer.duration)
+  const samples = Math.floor(1000 * audioBuffer.duration);
   const blockSize = Math.floor(rawData.length / samples);
+  //console.log(rawData, samples, blockSize);
   const filteredData = [];
   for (let i = 0; i < samples; i++) {
     let blockStart = blockSize * i;
     let sum = 0;
     for (let j = 0; j < blockSize; j++) {
-      sum = sum + Math.abs(rawData[blockStart + j])
+      sum = sum + Math.abs(rawData[blockStart + j]);
     }
     filteredData.push(sum / blockSize);
   }
-  return filteredData;
+  let remainingOffset = 1000 * (rawData.length - (samples * blockSize)) / audioBuffer.sampleRate;
+  console.log(remainingOffset);
+  return {filteredData, remainingOffset};
 }
 
 function visualize(audioBuffer) {
-  console.log(audioBuffer.duration*1000);
   // const displayedData = 1000;
   // const canvasHeight = 200;
   // const canvasWidth = (audioBuffer.length / audioBuffer.sampleRate) * 1000;
-  const filteredData = filterData(audioBuffer);
-  console.log(filteredData.length)
+  const {filteredData, remainingOffset} = filterData(audioBuffer);
   //const displayedData = (audioBuffer.length / audioBuffer.sampleRate) * 1000;
   const displayedData = filteredData.length;
-  const body = document.querySelector('body');
+  const div = document.getElementById('timing');
+  div.innerHTML = '';
   // const canvas = document.createElement('canvas');
   // canvas.width = canvasWidth;
   // canvas.height = canvasHeight;
@@ -56,8 +64,6 @@ function visualize(audioBuffer) {
   const firstNum = 15;
   const secondNum = 15;
   let times = [];
-  let dummy = [];
-  let count = 0;
   for (let i = 0; i < displayedData - firstNum - secondNum; i++) {
     let firstmax = -Infinity;
     let firstSum = 0;
@@ -85,34 +91,21 @@ function visualize(audioBuffer) {
       // ctx.font = "30px Arial";
       // ctx.fillText((i + firstNum) + "ms", xCord, canvasHeight);
       
-      // correcting
-       //227134 -- > 518
-      //29000 -- > 60
-      //let correctingCoeff = Math.floor(491 * i / (displayedData - firstNum - secondNum))
-      let correctingCoeff = Math.floor((0.002275 * filteredData.length) * i / (displayedData - firstNum - secondNum))
-      //227134 -- > 518
-      //29000 -- > 60
-      //216196 -- > 491
-     times.push(i + firstNum - correctingCoeff)
-     //times.push(i + firstNum)
+      let correctingCoeff = Math.floor(remainingOffset * i / (displayedData - firstNum - secondNum))
+      times.push(i + firstNum - correctingCoeff);
       i += firstNum + secondNum;
     }
-    dummy.push(0)
-    count++
   }
-  console.log(dummy.length, count, firstNum)
   // body.appendChild(canvas);
 
   for (let i = 0; i < times.length; i++) {
     let para = document.createElement("pre");
+    para.style.margin = 0;
     para.textContent = `- StartTime: ${times[i]}
   Bpm: 0.05000000074505806`;
-    body.appendChild(para);
+    div.appendChild(para);
   }
 }
 
-  
-window.AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioContext = new AudioContext();
 //visualizeAudio("test.mp3") ;
-visualizeAudio("audio2.mp3");
+//visualizeAudio("audio3.mp3");
